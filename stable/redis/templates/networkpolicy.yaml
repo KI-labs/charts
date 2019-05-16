@@ -17,9 +17,6 @@ spec:
     # Allow inbound connections
     - ports:
       - port: {{ .Values.redisPort }}
-      {{- if .Values.sentinel.enabled }}
-      - port: {{ .Values.sentinel.port }}
-      {{- end }}
       {{- if not .Values.networkPolicy.allowExternal }}
       from:
       - podSelector:
@@ -33,9 +30,33 @@ spec:
             app: {{ template "redis.name" . }}
       {{- end }}
       {{- end }}
-    {{- if .Values.metrics.enabled }}
-    # Allow prometheus scrapes for metrics
-    - ports:
+      - port: {{ .Values.sentinel.port }}
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+      - podSelector:
+          matchLabels:
+            {{ template "redis.fullname" . }}-client: "true"
+      {{- if .Values.metrics.enabled }}
+      - podSelector:
+          matchLabels:
+            release: "{{ .Release.Name }}"
+            role: metrics
+            app: {{ template "redis.name" . }}
+      {{- end }}
+      {{- end }}
+      {{- if .Values.metrics.enabled }}
+      # Allow prometheus scrapes for metrics
       - port: 9121
-    {{- end }}
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+      - podSelector:
+          matchLabels:
+            {{ template "redis.fullname" . }}-client: "true"
+      - podSelector:
+          matchLabels:
+            release: "{{ .Release.Name }}"
+            role: metrics
+            app: {{ template "redis.name" . }}
+  {{- end }}
+  {{- end }}
 {{- end }}
